@@ -9,10 +9,11 @@ import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.GridView;
@@ -30,8 +31,6 @@ public class GameActivity extends Activity implements OnItemClickListener {
     private final static int PTS_THREE_MATCHS = 60;
     private final static int PTS_FOUR_MATCHS = 120;
 
-    private final static int TEMPS_PARTIE = 70000;
-    private final static int TEMPS_MOINS= 3000;
 
     //variables du jeu
     private int[] data;
@@ -42,16 +41,6 @@ public class GameActivity extends Activity implements OnItemClickListener {
     private TextSwitcher scoreText;
 
     private Activity context;
-    private boolean isTimeEnd;
-
-    //variables de gestion du progressbar
-    private CountDownTimer countDownTimer;
-    private long millisUntilFinished;
-
-    private long totalTimeMillis;
-    private int periodTimeMillis;
-
-
 
     @Override
     public void onCreate(Bundle bundle) {
@@ -71,27 +60,27 @@ public class GameActivity extends Activity implements OnItemClickListener {
     }
 
 
+
     @SuppressLint("UseSparseArrays")
     private void initialize() {
 
-            score = 0;
-            //initialisation aleatoire de la grille
-            data = new int[140];
-            Random random = new Random();
+        score = 0;
+        //initialisation aleatoire de la grille
+        data = new int[140];
+        Random random = new Random();
 
-            //generer aleatoirement les indexes des 20 cases vides
-            int[] blankCells = getBlankCells();
+        //generer aleatoirement les indexes des 20 cases vides
+        int[] blankCells = getBlankCells();
 
-            for (int i = 0; i < 140; i++) {
-                // si i fait partie des indexes des cases vides, alors mettre une case vide dans la grille
-                if (contains(blankCells, i))
-                    data[i] = 7;//7 pour les cases vides
+        for (int i = 0; i < 140; i++) {
+            // si i fait partie des indexes des cases vides, alors mettre une case vide dans la grille
+            if (contains(blankCells, i))
+                data[i] = 7;//7 pour les cases vides
 
-                    // sinon generer une couleur aleatoirement
-                else
-                    data[i] = random.nextInt(7);
-            }
-
+                // sinon generer une couleur aleatoirement
+            else
+                data[i] = random.nextInt(7);
+        }
 
         //definition de la taille des cases selon taille de l'ecran
         Point outSize = new Point();
@@ -118,43 +107,23 @@ public class GameActivity extends Activity implements OnItemClickListener {
             }
         });
 
+        //animations d'entree et de sortie  du textView du score
+        Animation in = AnimationUtils.loadAnimation(this,android.R.anim.slide_in_left);
+        Animation out = AnimationUtils.loadAnimation(this,android.R.anim.slide_out_right);
+
+        // mettre les animations au textSwitcher
+        scoreText.setInAnimation(in);
+        scoreText.setOutAnimation(out);
+        scoreText.setText(String.valueOf(score));
 
         //gestion du gridView
         ColorAdapter adapter = new ColorAdapter(context, data, outSize.x);
         grid.setAdapter(adapter);
         grid.setOnItemClickListener(this);
 
-
-        totalTimeMillis = TEMPS_PARTIE;//temps du jeu
-        periodTimeMillis = 1;
-
-        isTimeEnd = false;
-        //initialiser le temps du timer
-        if(millisUntilFinished>0)
-            initCountDownTimer(millisUntilFinished);
-        else
-            initCountDownTimer(totalTimeMillis);
-
-        countDownTimer.start();
     }
 
-    private void initCountDownTimer(long totalTimeMillis){
-        countDownTimer = new CountDownTimer(totalTimeMillis, periodTimeMillis) {
-            //gerer la progression du timer
-            @Override
-            public void onTick(long _millisUntilFinished)
-            {
-                millisUntilFinished = _millisUntilFinished;
-            }
 
-            @Override
-            public void onFinish() {
-                isTimeEnd = true;
-                if(!context.isFinishing())
-                    showAlert();
-            }
-        };
-    }
 
     private int[] getBlankCells() {
         //generer aleatoirement 20 indexes des cases vides
@@ -187,7 +156,7 @@ public class GameActivity extends Activity implements OnItemClickListener {
     @Override
     public void onItemClick(AdapterView<?> adapter, View view, int position, long arg3) {
         //si la case touchee est vide
-        if (data[position] == 7 && !isTimeEnd) {
+        if (data[position] == 7) {
 
             // recuperer les positions des cases non vides du haut, du bas , de la droite et de la gauche
             List<List<Integer>> mld=listPositionsDropables(position);
@@ -213,18 +182,8 @@ public class GameActivity extends Activity implements OnItemClickListener {
                 scoreText.setText(String.valueOf(score));
 
             }
-            else{
 
-                countDownTimer.cancel();
-                //retirer du temps s'il n'y e pas de correspendance entres les couleurs des cases
-                long tempsRestant=millisUntilFinished-TEMPS_MOINS;
-                if(tempsRestant<0)
-                    tempsRestant=0;
-
-                initCountDownTimer(tempsRestant);
-                countDownTimer.start();
-            }
-
+            (new GridAnimationListener(this, adapter.getChildAt(position))).startAnimationWay(position);
             //enlever les cellules ayant des les memes couleurs avec une animation
             for (int i = 0; i < lstPositionsWin.size(); i++) {
 
@@ -235,9 +194,11 @@ public class GameActivity extends Activity implements OnItemClickListener {
                     if (viewToAinmate != null){
                         if(j==listColorOk.size()-1){
                             data[listColorOk.get(j)] = 7;
+                            (new GridAnimationListener(this, viewToAinmate)).startAnimation();
 
                         }
-
+                        else
+                            (new GridAnimationListener(this, viewToAinmate)).startAnimationWay(listColorOk.get(j));
                     }
                 }
 
@@ -248,7 +209,6 @@ public class GameActivity extends Activity implements OnItemClickListener {
             //verifier si le jeu est termine
             if (termine){
                 showAlert();
-                countDownTimer.cancel();
             }
         }
 
@@ -507,5 +467,6 @@ public class GameActivity extends Activity implements OnItemClickListener {
 
         return positionsWin;
     }
+
 
 }
