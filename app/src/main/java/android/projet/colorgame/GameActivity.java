@@ -4,8 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import android.projet.colorgame.utils.PreferencesUtils;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.os.Bundle;
@@ -48,6 +51,10 @@ public class GameActivity extends Activity implements OnItemClickListener {
 
     private Activity context;
     private boolean isTimeEnd;
+    private boolean isSavedGame;
+
+    private boolean isCreateDone;
+    private boolean homeButtonPressed;
 
     //variables de gestion du progressbar
     private CountDownTimer countDownTimer;
@@ -55,6 +62,7 @@ public class GameActivity extends Activity implements OnItemClickListener {
 
     private long totalTimeMillis;
     private int periodTimeMillis;
+
 
     @Override
     public void onCreate(Bundle bundle) {
@@ -69,34 +77,84 @@ public class GameActivity extends Activity implements OnItemClickListener {
         scoreText = findViewById(R.id.score);
         progressTime= findViewById(R.id.progressTime);
 
-        //initialisation de l'activite
-        initialize();
-    }
+        //gestion de la partie sauvegardée
+        Bundle objetbunble  = this.getIntent().getExtras();
+        String InfoPasse=null;
+        isSavedGame=false;
 
-
-
-    @SuppressLint("UseSparseArrays")
-    private void initialize() {
-
-        score = 0;
-        //initialisation aleatoire de la grille
-        data = new int[140];
-        Random random = new Random();
-
-        //generer aleatoirement les indexes des 20 cases vides
-        int[] blankCells = getBlankCells();
-
-        for (int i = 0; i < 140; i++) {
-            // si i fait partie des indexes des cases vides, alors mettre une case vide dans la grille
-            if (contains(blankCells, i))
-                data[i] = 7;//7 pour les cases vides
-
-                // sinon generer une couleur aleatoirement
-            else
-                data[i] = random.nextInt(7);
+        //vérifier si c'est le bouton "continuer" qui a été cliqué
+        if(objetbunble!=null){
+            // récupération de la partie sauvegardé
+            InfoPasse= objetbunble .getString("passInfo");
+            isSavedGame=true;
         }
 
-        //definition de la taille des cases selon taille de l'ecran
+        //initialisation de l'activité
+        initialize(InfoPasse);
+    }
+
+    @Override
+    protected void onPause() {
+
+        if(homeButtonPressed){
+            isCreateDone = false;
+            countDownTimer.cancel();
+        }
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if(!isCreateDone && homeButtonPressed){
+            //redémarrer le timer si ce n'est pas une nouvelle partie en l'initialisant avec le temps restant
+            initCountDownTimer(millisUntilFinished);
+            countDownTimer.start();
+
+
+        }
+    }
+
+    @SuppressLint("UseSparseArrays")
+    private void initialize(String savedGame) {
+
+        isCreateDone = true;
+        homeButtonPressed = true;
+
+        //cas d'une nouvelle partie
+        if(savedGame==null){
+            score = 0;
+            //initialisation aléatoire de la grille
+            data = new int[140];
+            Random random = new Random();
+
+            //generer aleatoirement les indexes des 20 cases vides
+            int[] blankCells = getBlankCells();
+
+            for (int i = 0; i < 140; i++) {
+                // si i fait partie des indexes des cases vides, alors mettre une case vide dans la grille
+                if (contains(blankCells, i))
+                    data[i] = 7;//7 pour les cases vides
+
+                    // sinon generer une couleur aleatoirement
+                else
+                    data[i] = random.nextInt(7);
+            }
+
+
+        }
+        //cas d'une partie sauvegardée
+        else{
+            //chargement de la partie sauvegardé: score, grille et le temps restant
+            PreferencesUtils prefs=new PreferencesUtils(context);
+            score=prefs.jsonDeserializeScoreOfState(savedGame);
+
+            data= prefs.jsonDeserializePositionsOfState(savedGame);
+            millisUntilFinished=prefs.jsonDeserializeTimeOfState(savedGame);
+
+        }
+
+        //définition de la taille des cases selon taille de l'écran
         Point outSize = new Point();
         this.getWindowManager().getDefaultDisplay().getSize(outSize);
 
@@ -147,12 +205,67 @@ public class GameActivity extends Activity implements OnItemClickListener {
             initCountDownTimer(totalTimeMillis);
 
         countDownTimer.start();
+    }
 
+    @Override
+    public void onBackPressed() {
+
+        //arréter le timer
+        countDownTimer.cancel();
+
+        //afficher la boite de dialogue avec trois boutons sauvegarder, annuler et quitter
+        final AlertDialog alert = new AlertDialog.Builder(this).create();
+
+        alert.setTitle(R.string.app_name);
+        alert.setMessage(String.format(getResources().getString(R.string.on_back_message)));
+
+        alert.setCancelable(false);
+
+        // le bouton sauvegarder la partie
+        alert.setButton(AlertDialog.BUTTON_NEGATIVE, getResources().getString(R.string.save_button),
+                new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface arg0, int arg1) {
+                        alert.dismiss();
+                        context.finish();
+                        homeButtonPressed = false;
+                        //sauvegarder les paramétres de la partie
+                        PreferencesUtils preferences=new PreferencesUtils(context);
+                        String jsonEtat= preferences.jsonSerializeState(score, millisUntilFinished, data);
+                        preferences.setString(preferences.KEY_STATE, jsonEtat);
+                    }
+                });
+
+        //bouton annuler, revenir é la partie
+        alert.setButton(AlertDialog.BUTTON_NEUTRAL, getResources().getString(R.string.continue_button),
+                new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface arg0, int arg1) {
+                        alert.dismiss();
+                        initCountDownTimer(millisUntilFinished);
+                        countDownTimer.start();
+                    }
+                });
+
+        //bouton quitter, quitter sans sauvegarder
+        alert.setButton(AlertDialog.BUTTON_POSITIVE, getResources().getString(R.string.quit_button),
+                new DialogInterface.OnClickListener() {
+
+                    @Override
+                    public void onClick(DialogInterface arg0, int arg1) {
+                        alert.dismiss();
+                        context.finish();
+                        homeButtonPressed = false;
+                    }
+                });
+        alert.show();
     }
 
     private void initCountDownTimer(long totalTimeMillis){
         countDownTimer = new CountDownTimer(totalTimeMillis, periodTimeMillis) {
-            //g�rer la progression du timer
+            //gérer la progression du timer
             @Override
             public void onTick(long _millisUntilFinished)
             {
@@ -229,7 +342,7 @@ public class GameActivity extends Activity implements OnItemClickListener {
             else{
 
                 countDownTimer.cancel();
-                //retirer du temps s'il n'y � pas de correspendance entres les couleurs des cases
+                //retirer du temps s'il n'y é pas de correspendance entres les couleurs des cases
                 long tempsRestant=millisUntilFinished-TEMPS_MOINS;
                 if(tempsRestant<0)
                     tempsRestant=0;
@@ -270,6 +383,12 @@ public class GameActivity extends Activity implements OnItemClickListener {
     }
 
     private void showAlert(){
+
+        final PreferencesUtils prefs= new PreferencesUtils(context);
+
+        if(isSavedGame)
+            prefs.setString(prefs.KEY_STATE, "");
+
 
     }
 

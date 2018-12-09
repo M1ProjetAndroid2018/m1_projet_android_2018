@@ -16,7 +16,16 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
-            app:popupTheme="@style/AppTheme.PopupOverlay" />
+            app:popupTheme="@style/AppTheme.PopupOverlay" >
+            <TextView
+                android:id="@+id/toolbarTextView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_horizontal"
+                android:text="@string/app_name"
+                android:textColor="#FFFFFF"
+                android:textSize="35dp"/>
+        </android.support.v7.widget.Toolbar>
 
     </android.support.design.widget.AppBarLayout>
 
@@ -24,11 +33,25 @@
         android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignTop="@+id/reprise"
         android:layout_gravity="bottom|end"
-        android:layout_marginBottom="210dp"
+        android:layout_marginStart="100dp"
         android:src="@drawable/ic_game"
+        app:elevation="0dp" />
+
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/reprise"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="187dp"
+        android:layout_marginEnd="100dp"
+        android:src="@drawable/ic_reprise"
+        app:backgroundTint="@color/turquoise"
         app:elevation="0dp" />
 
 </RelativeLayout>

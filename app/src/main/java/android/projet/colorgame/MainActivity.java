@@ -1,56 +1,78 @@
 package android.projet.colorgame;
 
+import android.projet.colorgame.utils.PreferencesUtils;
+import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.view.View.OnClickListener;
+import android.view.Window;
+import android.widget.ImageButton;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity implements OnClickListener {
+
+    private ImageButton playButton;
+    private ImageButton continueButton;
+
+    private Context context;
+    private String savedGame;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                openGameActivity();
-            }
-        });
+        context = this;
+        //récupérer les éléments graphiques
+        playButton = (ImageButton)findViewById(R.id.fab);
+        playButton.setOnClickListener(this);
+
+        continueButton = (ImageButton)findViewById(R.id.reprise);
+        continueButton.setOnClickListener(this);
+
+
     }
-
-    public void openGameActivity() {
-        Intent intent = new Intent(this, GameActivity.class);
-        startActivity(intent);
-    }
-
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
+    protected void onResume() {
+        super.onResume();
+        //récupérer la partie enregistrée s'il y en a
+        PreferencesUtils prefs= new PreferencesUtils(context);
+        savedGame=prefs.getString(prefs.KEY_STATE, "");
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        //griser le bouton continuer s'il n'y a pas de partie sauvegardée
+        if(savedGame==null||savedGame.isEmpty()){
+            continueButton.setEnabled(false);
+        }
+        else
+        {
+            continueButton.setEnabled(true);
         }
 
-        return super.onOptionsItemSelected(item);
     }
+
+    @Override
+    public void onClick(View view) {
+
+        switch (view.getId()) {
+
+            //bouton continuer cliqué
+            case R.id.reprise:
+                //lancer le jeu en envoyant les parmètres de la partie sauvegardée à l'activité du jeu
+                Intent intentSaved = new Intent(context, GameActivity.class);
+                Bundle objetbunble = new Bundle();
+                objetbunble .putString("passInfo",savedGame);
+                intentSaved.putExtras(objetbunble );
+                startActivity(intentSaved);
+                break;
+            //bouton jouer cliqué
+            case R.id.fab:
+                Intent intent = new Intent(context, GameActivity.class);
+                startActivity(intent);
+                break;
+
+        }
+    }
+
 }
