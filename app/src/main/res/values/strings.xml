@@ -7,7 +7,12 @@
     <string name="continue_button">Continuer</string>
 
     <string name="ok_button">Ok</string>
+    <string name="final_message">Votre score est de: </string>
     <string name="on_back_message">Que voulez vous faire? </string>
+    <string name="final_msg_best_score">Bravo!</string>
     <string name="name_empty">Joueur</string>
+
+    <string name="no_best_scores_msg">Pas de scores enregistrés!</string>
+    <string name="best_scores_title">Meilleurs scores</string>
 
 </resources>

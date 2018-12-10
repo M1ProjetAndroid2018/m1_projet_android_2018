@@ -20,6 +20,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
+import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ProgressBar;
 import android.widget.TextSwitcher;
@@ -35,6 +36,8 @@ public class GameActivity extends Activity implements OnItemClickListener {
     private final static int PTS_TWO_MATCHS = 40;
     private final static int PTS_THREE_MATCHS = 60;
     private final static int PTS_FOUR_MATCHS = 120;
+
+    private final static int NBR_BEST_SCORES = 5;
 
     private final static int TEMPS_PARTIE = 70000;
     private final static int TEMPS_MOINS= 3000;
@@ -62,6 +65,11 @@ public class GameActivity extends Activity implements OnItemClickListener {
 
     private long totalTimeMillis;
     private int periodTimeMillis;
+
+    //variables de gestion des meilleurs scores
+    private List<Integer> meilleursScores;
+    private List<String> nomMeilleursScores;
+    int indexNewBest;
 
 
     @Override
@@ -389,6 +397,116 @@ public class GameActivity extends Activity implements OnItemClickListener {
         if(isSavedGame)
             prefs.setString(prefs.KEY_STATE, "");
 
+        String prefsBestScores= prefs.getString(prefs.KEY_BEST_SCORES, "");
+        if(prefsBestScores!=null){
+
+            meilleursScores=prefs.jsonDeserializeBestScoresValues(prefsBestScores);
+            nomMeilleursScores=prefs.jsonDeserializeBestScoresNames(prefsBestScores);
+
+
+            boolean best=false;
+            //vérifier si le score obtenu fait partie des meilleurs scores
+            if( meilleursScores.size()>0 ){
+                if(score>meilleursScores.get(meilleursScores.size()-1)){
+                    best=true;
+
+                }
+            }
+
+            //cas un des meilleurs scores battus ou s'il n'y é pas encore de meilleurs scores enregistrés
+            if (score>0 &&(meilleursScores.size()<NBR_BEST_SCORES ||best) ){
+
+                indexNewBest=0;
+                int i = meilleursScores.size()-1;
+
+                if(i<0){
+                    //si la liste des meilleurs scores est vide, ajouter le score obtenu dirrectement
+                    meilleursScores.add(score);
+                    nomMeilleursScores.add(getResources().getString(R.string.name_empty));
+                }
+                else{
+                    //placer le nouveau meilleur score dans le tableau des meilleurs scores
+                    if(i<NBR_BEST_SCORES-1){
+                        meilleursScores.add(score);
+                        nomMeilleursScores.add(getResources().getString(R.string.name_empty));
+                        indexNewBest=i+1;
+                    }
+                    boolean trouv=false;
+                    while ( i >= 0 && !trouv) {
+                        if(meilleursScores.get(i)<score){
+                            if (i<NBR_BEST_SCORES-1){
+                                meilleursScores.set(i+1,meilleursScores.get(i));
+                                nomMeilleursScores.set(i+1, nomMeilleursScores.get(i));
+                            }
+
+                            meilleursScores.set(i, score);
+                            nomMeilleursScores.set(i, getResources().getString(R.string.name_empty));
+                            indexNewBest=i;
+                            i--;
+                        }else
+                            trouv=true;
+
+                    }
+
+                }
+
+                //afficher boite de dialoque pour enregistrer le nom du joueur
+                AlertDialog.Builder alert = new AlertDialog.Builder(context);
+                alert.setCancelable(false);
+                alert.setTitle(R.string.app_name);
+                int place=indexNewBest+1;
+                String str=place+" éme";
+                if (place==1) {
+                    str="";
+                }
+                alert.setMessage(String.format(getResources().getString(R.string.final_msg_best_score)) +" "+ score + " points, vous avez le "+str+" meilleur score. Entrez votre nom.");
+
+                final EditText input = new EditText(context);
+                input.setMaxLines(1);
+                alert.setView(input);
+
+                alert.setPositiveButton(getResources().getString(R.string.ok_button), new DialogInterface.OnClickListener() {
+
+
+                    //récupérer nom du joueur et sauvegarder
+                    public void onClick(DialogInterface dialog, int whichButton) {
+
+                        String nom = input.getEditableText().toString();
+                        if(nom.isEmpty())
+                            nom=getResources().getString(R.string.name_empty);
+
+                        nomMeilleursScores.set(indexNewBest, nom);
+                        String json=prefs.jsonSerializeBestScores(nomMeilleursScores, meilleursScores);
+                        prefs.setString(prefs.KEY_BEST_SCORES, json);
+                        context.finish();
+                    }
+
+                });
+
+                AlertDialog alertDialog = alert.create();
+                alertDialog.show();
+            }
+            else{
+                //si le score obtenu ne fait pas partie des meilleurs scores afficher le score obtenu dans une pop up
+                final AlertDialog alert = new AlertDialog.Builder(this).create();
+
+                alert.setTitle(R.string.app_name);
+                alert.setMessage(String.format(getResources().getString(R.string.final_message)) +" "+ score + " points!");
+
+                alert.setCancelable(false);
+                alert.setButton(AlertDialog.BUTTON_NEUTRAL, getResources().getString(R.string.ok_button),
+                        new DialogInterface.OnClickListener() {
+
+                            @Override
+                            public void onClick(DialogInterface arg0, int arg1) {
+                                alert.dismiss();
+                                context.finish();
+                            }
+                        });
+                alert.show();
+            }
+
+        }
 
     }
 
